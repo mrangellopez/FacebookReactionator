@@ -1,4 +1,4 @@
-import 'sentiment/NaiveBayes' as sentimentClassifier
+from sentiment import NaiveBayes
 
 def main():
    print 'ready to start coding shit up'
