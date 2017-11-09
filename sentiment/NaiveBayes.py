@@ -28,7 +28,7 @@ class NaiveBayes:
     self.FILTER_STOP_WORDS = False
     self.BOOLEAN_NB = False
     self.BEST_MODEL = False
-    self.stopList = set(self.readFile('data/english.stop'))
+    self.stopList = set(self.readFile('sentiment/data/english.stop'))
     self.customStopList = self.customStopList = ['a', 'the', 'of', 'to', 'in', 'that', 'is', 'and', 'it', 'with', 'for', 'as', 'this', 'on', 'an', 'by', 'are', 'at']
     self.wordClassCount = collections.defaultdict(lambda: collections.defaultdict(lambda: 0))
     self.nPos = 0
