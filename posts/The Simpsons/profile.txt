@@ -1,0 +1,7 @@
+{
+  "id": "29534858696",
+  "name": "The Simpsons",
+  "fan_count": 65553030,
+  "category": "TV Show",
+  "about": "Season 29 of The Simpsons premieres on October 1 on FOX. "
+}

@@ -49,11 +49,17 @@ class NaiveBayes:
         words = self.filterStopWords(words)
         #fix
 
-    posScore = 1.0 * math.log(self.nPos)
-    posScore -= math.log(self.nPos + self.nNeg)
+    nPosAndNeg = self.nPos + self.nNeg
+    posScore = 0
+    negScore = 0
 
-    negScore = 1.0 * math.log(self.nNeg)
-    negScore -= math.log(self.nPos + self.nNeg)
+    if self.nPos > 0:
+        posScore = 1.0 * math.log(self.nPos)
+    if self.nNeg > 0:
+        negScore = 1.0 * math.log(self.nNeg)
+    if nPosAndNeg > 0:
+        posScore -= math.log(nPosAndNeg)
+        negScore -= math.log(nPosAndNeg)
 
     alpha = self.alpha
     V_Alpha = 1.0

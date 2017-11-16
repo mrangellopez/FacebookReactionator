@@ -1,0 +1,7 @@
+{
+  "id": "59386114427",
+  "name": "Harry Potter and the Deathly Hallows",
+  "fan_count": 1804067,
+  "category": "Movie",
+  "about": "Harry Potter and the Deathy Hallows is the final book in the popular book series by J.K. Rowling. The book was released on 21 July 2007 by Bloomsbury Publishing in the United Kingdom, in the United States by Scholastic, and in Canada by Raincoast Books."
+}

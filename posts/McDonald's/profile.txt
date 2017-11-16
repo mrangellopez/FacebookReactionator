@@ -1,0 +1,7 @@
+{
+  "id": "50245567013",
+  "name": "McDonald's",
+  "fan_count": 74619870,
+  "category": "Fast Food Restaurant",
+  "about": "Dedicated to everyone who says, “i’m lovin’ it”. To our super fans – We salute you."
+}
