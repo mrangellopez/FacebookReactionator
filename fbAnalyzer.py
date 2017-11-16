@@ -1,6 +1,6 @@
 from NaiveBayes import NaiveBayes
 from DataParser import DataParser
-import random, util
+import random, util, copy
 from FeatureExtractor import FeatureExtractor
 
 featureExtractor = FeatureExtractor()
@@ -16,9 +16,16 @@ def generateWeights(trainExamples, numIters, eta):
         random.shuffle(randomIndexes)
         for j in randomIndexes:
             (features, y) = trainExamples[j]
-            util.increment(weights, y * eta if util.dotProduct(weights, features) * y < 1 else 0 , features)
-    return weights
+            prediction = util.dotProduct(weights, features)
+            residual = prediction - y
+            # loss = w * phi - y
+            # derivative is phi
 
+            # w <- w - eta * gradient of loss(w, x, y) with respect to y
+            util.increment(weights, y * eta if util.dotProduct(weights, features) * y < 1 else 0, features)
+    weights = {k: v / numIters for k, v in weights.iteritems()}
+
+    return weights
 
 
 # Functions: getFeaturesTo[Reaction, ProportionReaction, ProportionEmotional]
@@ -62,13 +69,13 @@ def getProportionsWeights(featuresToResultsAll):
     proportionAngryExamples = getFeaturesToProportionReaction(featuresToResultsAll, 'angry')
     proportionEmotionalExamples = getFeaturesToProportionEmotional(featuresToResultsAll)
 
-    weightsLike = generateWeights(proportionLikeExamples, 5000, 0.1)
-    weightsLove = generateWeights(proportionLoveExamples, 5000, 0.1)
-    weightsHaha = generateWeights(proportionHahaExamples, 5000, 0.1)
-    weightsWow = generateWeights(proportionWowExamples, 5000, 0.1)
-    weightsSad = generateWeights(proportionSadExamples, 5000, 0.1)
-    weightsAngry = generateWeights(proportionAngryExamples, 5000, 0.1)
-    weightsEmotional = generateWeights(proportionEmotionalExamples, 5000, 0.1)
+    weightsLike = generateWeights(proportionLikeExamples, 5000, 1)
+    weightsLove = generateWeights(proportionLoveExamples, 5000, 1)
+    weightsHaha = generateWeights(proportionHahaExamples, 5000, 1)
+    weightsWow = generateWeights(proportionWowExamples, 5000, 1)
+    weightsSad = generateWeights(proportionSadExamples, 5000, 1)
+    weightsAngry = generateWeights(proportionAngryExamples, 5000, 1)
+    weightsEmotional = generateWeights(proportionEmotionalExamples, 5000, 1)
 
     return {'like': weightsLike, 'love': weightsLove, 'haha': weightsHaha, \
     'wow': weightsWow, 'sad': weightsSad, 'angry': weightsAngry, 'emotional': weightsEmotional}
@@ -81,12 +88,12 @@ def getAbsolutesWeights(featuresToResultsAll):
     absoluteSadsExamples = getFeaturesToReaction(featuresToResultsAll, 'sad')
     absoluteAngrysExamples = getFeaturesToReaction(featuresToResultsAll, 'angry')
 
-    weightsLike = generateWeights(absoluteLikesExamples, 5000, 0.1)
-    weightsLove = generateWeights(absoluteLovesExamples, 5000, 0.1)
-    weightsHaha = generateWeights(absoluteHahasExamples, 5000, 0.1)
-    weightsWow = generateWeights(absoluteWowsExamples, 5000, 0.1)
-    weightsSad = generateWeights(absoluteSadsExamples, 5000, 0.1)
-    weightsAngry = generateWeights(absoluteAngrysExamples, 5000, 0.1)
+    weightsLike = generateWeights(absoluteLikesExamples, 5000, 1)
+    weightsLove = generateWeights(absoluteLovesExamples, 5000, 1)
+    weightsHaha = generateWeights(absoluteHahasExamples, 5000, 1)
+    weightsWow = generateWeights(absoluteWowsExamples, 5000, 1)
+    weightsSad = generateWeights(absoluteSadsExamples, 5000, 1)
+    weightsAngry = generateWeights(absoluteAngrysExamples, 5000, 1)
 
     return {'like': weightsLike, 'love': weightsLove, 'haha': weightsHaha, \
     'wow': weightsWow, 'sad': weightsSad, 'angry': weightsAngry}
@@ -94,6 +101,7 @@ def getAbsolutesWeights(featuresToResultsAll):
 
 
 def predict(weights, post, proportional):
+
     fv = featureExtractor.extractFeatures(post)
 
     Likes = util.dotProduct(fv, weights['like'])
@@ -114,8 +122,8 @@ def predict(weights, post, proportional):
         results['emotional'] = Emotionals
     return results
 
-def printResults(guess, post):
 
+def printResults(guess, post):
 
     if 'num_like' in post:
         nLikes = post['num_like']
@@ -161,13 +169,13 @@ def main():
     testPost = dp.parsePost('tests/testProfile/10376464573_10156028999814574.txt', testProfile, False)
 
     # calculate results
-    proportionGuess = predict(proportionsWeights, testPost, True)
+    #proportionGuess = predict(proportionsWeights, testPost, True)
 
-    #absoluteGuess = predict(absolutesWeights, testPost, False)
+    absoluteGuess = predict(absolutesWeights, testPost, False)
 
     # print results
-    printResults(proportionGuess, testPost)
-    #printResults(absoluteGuess, post)
+    #printResults(proportionGuess, testPost)
+    printResults(absoluteGuess, testPost)
 
 
 
