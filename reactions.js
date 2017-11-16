@@ -1,6 +1,6 @@
 casper = require("casper").create()
 
-var url = 'https://graph.facebook.com/v2.10/7126051465/posts?access_token=var url = 'https://graph.facebook.com/v2.10/1191441824276882_1481644395256622?fields=reactions.type(LOVE).limit(0).summary(total_count).as(reactions_love),reactions.type(WOW).limit(0).summary(total_count).as(reactions_wow),reactions.type(HAHA).limit(0).summary(total_count).as(reactions_haha),likes.limit(0).summary(total_count)&access_token=EAACEdEose0cBAChA5mbIzQrErxUCjlEqoeSUvqsZBIdJ9gHTqZAGuTJ66DTweCZArXaSta1T3Lkbuf6D7Fjz3p99hGh2XCyDPN4DLst0h19kh4ebLYLi7df7sHtGBKQU88tMQhvgB5Xbkm3GZBDNtgRimZAiU0GgJHyHUSIYlJrEBdH4X01CQpsghxHDlGdYZD'' 
+var url = 'https://graph.facebook.com/v2.10/7126051465/posts?access_token=EAACEdEose0cBAEyy62fhkDotUKxfxmL0Ux9ms2ocdcl7Yl3TRc4DWTZCGs1voRkCQK2qRqxRVjH1c9G82RRHeL0fPtyBKbaeTsmZBCRDXMwZCgVnv0JzhGIutarLAwtDQuvzd3ZBZB99uoqKsv64wqngtIDacbL6Fd15TCvauxWl2dIJa4vugPJ2hbIbI7B8ZD' 
 // var url = 'https://graph.facebook.com/v2.10/1191441824276882?fields=posts{reactions.type(SAD).limit(0).summary(total_count).as(reactions_sad),message,source,status_type,picture,object_id,name,parent_id,properties,type,to,from,created_time,permalink_url,reactions.type(LOVE).limit(0).summary(total_count).as(reactions_love),reactions.type(WOW).limit(0).summary(total_count).as(reactions_wow),reactions.type(HAHA).limit(0).summary(total_count).as(reactions_haha),likes.limit(0).summary(total_count)}&access_token=EAACEdEose0cBAMXZCfdZCAnwA2X0N5thyHRIAKVEI4BGQnrZA6169I9hWRk0Ii8mI8tPNx0OwXYoUiIXpVZBTgHssBzU5bKuTvisv2lIGTfqXJTwcOyx9Ka6CRpOGALIWc4bXPNZC6skkZBB0tXDSiLZBRsocLidrXqOhrZBjMQbivBDIkiZAqJDWM6UrZBZAVSqToZD'
 var terminate = function() {
     this.echo("Exiting..").exit();
@@ -23,7 +23,7 @@ var processPage = function() {
 } 
 
 if (casper.cli.options.inline) {
-  url = 'https://graph.facebook.com/v2.10/' + casper.cli.args[0] + '?fields=posts{reactions.type(SAD).limit(0).summary(total_count).as(reactions_sad),message,source,status_type,picture,object_id,name,parent_id,properties,type,to,from,created_time,permalink_url,reactions.type(LOVE).limit(0).summary(total_count).as(reactions_love),reactions.type(WOW).limit(0).summary(total_count).as(reactions_wow),reactions.type(HAHA).limit(0).summary(total_count).as(reactions_haha),likes.limit(0).summary(total_count)}&access_token='
+  url = 'https://graph.facebook.com/v2.10/' + casper.cli.args[0] + '?fields=posts{reactions.type(SAD).limit(0).summary(total_count).as(reactions_sad),message,source,status_type,picture,object_id,name,parent_id,properties,type,to,from,created_time,permalink_url,reactions.type(LOVE).limit(0).summary(total_count).as(reactions_love),reactions.type(WOW).limit(0).summary(total_count).as(reactions_wow),reactions.type(HAHA).limit(0).summary(total_count).as(reactions_haha),likes.limit(0).summary(total_count)}&access_token=EAACEdEose0cBAEyy62fhkDotUKxfxmL0Ux9ms2ocdcl7Yl3TRc4DWTZCGs1voRkCQK2qRqxRVjH1c9G82RRHeL0fPtyBKbaeTsmZBCRDXMwZCgVnv0JzhGIutarLAwtDQuvzd3ZBZB99uoqKsv64wqngtIDacbL6Fd15TCvauxWl2dIJa4vugPJ2hbIbI7B8ZD'
 }
 casper.start().then(function() {
     this.open(url, {
