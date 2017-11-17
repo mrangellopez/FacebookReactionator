@@ -1,0 +1,7 @@
+{
+  "fan_count": 37190293,
+  "category": "Food & Beverage Company",
+  "about": "Inspiring and nurturing the human spirit -- one person, one cup, and one neighborhood at a time http://www.youtube.com/starbucks",
+  "name": "Starbucks",
+  "id": "22092443056"
+}

@@ -1,0 +1,7 @@
+{
+  "fan_count": 32401,
+  "category": "Musician/Band",
+  "about": "신스팝 뮤지션 우효의 페이지입니다. Hi this is Synthpop musician OOHYO's page.contact. MUN HWA INTel.+822.333.2083 http://www.munhwain.kr",
+  "name": "우효 OOHYO",
+  "id": "318084708344748"
+}

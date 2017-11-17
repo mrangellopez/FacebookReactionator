@@ -2,9 +2,20 @@ from NaiveBayes import NaiveBayes
 from DataParser import DataParser
 import random, util, copy
 from FeatureExtractor import FeatureExtractor
+import matplotlib.pyplot as plt
 
 featureExtractor = FeatureExtractor()
 
+def generateWeightsGradientDescent(trainExamples, numIters, eta):
+    weights = {}
+    for i in range(numIters):
+        for j in trainExamples:
+            (features, y) = trainExamples[j]
+            prediction = util.dotProduct(weights, features)
+            residual = prediction - y
+            util.increment(weights, y * eta if util.dotProduct(weights, features) * y < 1 else 0, features)
+    weights = {k: v / numIters for k, v in weights.iteritems()}
+    return weights
 
 # Function: generateWeights
 # -------------------------
@@ -24,7 +35,6 @@ def generateWeights(trainExamples, numIters, eta):
             # w <- w - eta * gradient of loss(w, x, y) with respect to y
             util.increment(weights, y * eta if util.dotProduct(weights, features) * y < 1 else 0, features)
     weights = {k: v / numIters for k, v in weights.iteritems()}
-
     return weights
 
 
@@ -83,18 +93,17 @@ def getProportionsWeights(featuresToResultsAll):
 def getAbsolutesWeights(featuresToResultsAll):
     absoluteLikesExamples = getFeaturesToReaction(featuresToResultsAll, 'like')
     absoluteLovesExamples = getFeaturesToReaction(featuresToResultsAll, 'love')
+    print absoluteLovesExamples
     absoluteHahasExamples = getFeaturesToReaction(featuresToResultsAll, 'haha')
     absoluteWowsExamples = getFeaturesToReaction(featuresToResultsAll, 'wow')
     absoluteSadsExamples = getFeaturesToReaction(featuresToResultsAll, 'sad')
     absoluteAngrysExamples = getFeaturesToReaction(featuresToResultsAll, 'angry')
-
-    weightsLike = generateWeights(absoluteLikesExamples, 5000, 1)
-    weightsLove = generateWeights(absoluteLovesExamples, 5000, 1)
-    weightsHaha = generateWeights(absoluteHahasExamples, 5000, 1)
-    weightsWow = generateWeights(absoluteWowsExamples, 5000, 1)
-    weightsSad = generateWeights(absoluteSadsExamples, 5000, 1)
-    weightsAngry = generateWeights(absoluteAngrysExamples, 5000, 1)
-
+    weightsLike = generateWeights(absoluteLikesExamples, 1000, 1)
+    weightsLove = generateWeights(absoluteLovesExamples, 1000, 1)
+    weightsHaha = generateWeights(absoluteHahasExamples, 1000, 1)
+    weightsWow = generateWeights(absoluteWowsExamples, 1000, 1)
+    weightsSad = generateWeights(absoluteSadsExamples, 1000, 1)
+    weightsAngry = generateWeights(absoluteAngrysExamples, 1000, 1)
     return {'like': weightsLike, 'love': weightsLove, 'haha': weightsHaha, \
     'wow': weightsWow, 'sad': weightsSad, 'angry': weightsAngry}
 
@@ -149,22 +158,36 @@ def printResults(guess, post):
         nAngrys = post['num_angry']
         print "\tGuessed %s angrys, real total was %s" % (guess['angry'], nAngrys)
 
+def getAverageAbsoluteError(dp, numTrials):
+    features = dp.getFeatureResultPairs()
+    testProfile = dp.parseProfile('tests/testProfile/profile.txt', False)
+    testPost = dp.parsePost('tests/testProfile/10376464573_10156028999814574.txt', testProfile, False)
+    guess_sum = {}
+    for i in range(numTrials):
+        weights = getAbsolutesWeights(features)
+        iter_guess = predict(weights, testPost, False)        
+        if i == 0:
+            guess_sum = iter_guess
+        else:
+            guess_sum = {k: v + iter_guess[k] for k,v in guess_sum.iteritems()}
+        print guess_sum
+    guess_sum = {k: v/numTrials for k,v in guess_sum.iteritems()}
+    return guess_sum
 
 def main():
-
     print "parsing data..."
     dp = DataParser('posts')
     featuresToResultsAll =  dp.getFeatureResultPairs()
 
     # calculate weights
-    print "calculating weights for proportional queries..."
-    proportionsWeights = getProportionsWeights(featuresToResultsAll)
-
+    # print "calculating weights for proportional queries..."
+    # proportionsWeights = getProportionsWeights(featuresToResultsAll)
     print "calculating weights for absolute queries..."
     absolutesWeights = getAbsolutesWeights(featuresToResultsAll)
-
+    # absoluteGuess = getAverageAbsoluteError(dp, 5)
+    # absoluteGuessTwo = getAverageAbsoluteError(dp, 10)
     # get example post to test
-    print "testing on test profile and test post"
+    # print "testing on test profile and test post"
     testProfile = dp.parseProfile('tests/testProfile/profile.txt', False)
     testPost = dp.parsePost('tests/testProfile/10376464573_10156028999814574.txt', testProfile, False)
 
@@ -172,13 +195,12 @@ def main():
     #proportionGuess = predict(proportionsWeights, testPost, True)
 
     absoluteGuess = predict(absolutesWeights, testPost, False)
-
     # print results
     #printResults(proportionGuess, testPost)
+    # print "Five iterations of learning give us the following guess:"
     printResults(absoluteGuess, testPost)
-
-
-
+    # print "Ten iterations of learning give us the following guess:"
+    # printResults(absoluteGuessTwo, testPost)
 
 if __name__ == '__main__':
    main()
