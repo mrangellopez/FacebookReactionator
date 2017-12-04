@@ -1,0 +1,7 @@
+{
+  "id": "141676752595822",
+  "name": "Rick and Morty",
+  "fan_count": 3060028,
+  "category": "TV Show",
+  "about": "[OFFICIAL] Join Rick and Morty as they boldly go where no sane person would even consider. Streaming FREE on [Adult Swim]."
+}

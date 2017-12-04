@@ -1,0 +1,7 @@
+{
+  "fan_count": 972437,
+  "category": "Media/News Company",
+  "about": "Welcome to the official home of the BBC on Facebook. Our mission is to enrich your life. To inform, educate and entertain.",
+  "name": "BBC",
+  "id": "1143803202301544"
+}

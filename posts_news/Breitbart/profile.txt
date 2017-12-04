@@ -1,0 +1,7 @@
+{
+  "fan_count": 3745686,
+  "category": "Media/News Company",
+  "about": "Breitbart News (www.breitbart.com) is a conservative news and opinion website founded by the late Andrew Breitbart.",
+  "name": "Breitbart",
+  "id": "95475020353"
+}

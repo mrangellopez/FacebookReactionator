@@ -15,6 +15,11 @@ def dotProduct(d1, d2):
     else:
         return sum(d1.get(f, 0) * v for f, v in d2.items())
 
+def scale(d, s):
+    for k, v in d.iteritems():
+        d[k] = v * s
+    return d
+
 def increment(d1, scale, d2):
     """
     Implements d1 += scale * d2 for sparse vectors.

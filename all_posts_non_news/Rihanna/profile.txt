@@ -1,0 +1,7 @@
+  {
+    "id": "10092511675",
+    "name": "Rihanna",
+    "fan_count": 81343543,
+    "category": "Artist",
+    "about": "Fenty Beauty collection out now: http://ri-hanna.io/fentybeauty\nGet #ANTI: http://smarturl.it/daANTI"
+  }

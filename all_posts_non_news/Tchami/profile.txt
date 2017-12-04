@@ -1,0 +1,7 @@
+{
+    "id": "318096278310841",
+    "name": "Tchami",
+    "fan_count": 386788,
+    "category": "Musician/Band",
+    "about": "Can't Edit Your Soul\n\nTchami x Malaa - No Redemption Tour\nPre-sale live NOW with code SUMMER99\nsmarturl.it/NoRedemptionTour"
+  }

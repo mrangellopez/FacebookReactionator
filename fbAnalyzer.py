@@ -1,21 +1,12 @@
 from NaiveBayes import NaiveBayes
 from DataParser import DataParser
-import random, util, copy
+import random, util, copy, math
 from FeatureExtractor import FeatureExtractor
 import matplotlib.pyplot as plt
 
 featureExtractor = FeatureExtractor()
 
-def generateWeightsGradientDescent(trainExamples, numIters, eta):
-    weights = {}
-    for i in range(numIters):
-        for j in trainExamples:
-            (features, y) = trainExamples[j]
-            prediction = util.dotProduct(weights, features)
-            residual = prediction - y
-            util.increment(weights, y * eta if util.dotProduct(weights, features) * y < 1 else 0, features)
-    weights = {k: v / numIters for k, v in weights.iteritems()}
-    return weights
+
 
 # Function: generateWeights
 # -------------------------
@@ -23,18 +14,26 @@ def generateWeightsGradientDescent(trainExamples, numIters, eta):
 def generateWeights(trainExamples, numIters, eta):
     weights = {}
     randomIndexes = [i for i in range(len(trainExamples))]
+
+    random.shuffle(randomIndexes)
+    randomIndexes = randomIndexes[:int(0.1 * len(randomIndexes))]
+
+    #eta_original = eta
+    #num_updates = 1
     for i in range(numIters):
         random.shuffle(randomIndexes)
+        #num_updates += 1
         for j in randomIndexes:
             (features, y) = trainExamples[j]
-            prediction = util.dotProduct(weights, features)
-            residual = prediction - y
-            # loss = w * phi - y
-            # derivative is phi
+            #eta = eta_original / num_updates
 
-            # w <- w - eta * gradient of loss(w, x, y) with respect to y
-            util.increment(weights, y * eta if util.dotProduct(weights, features) * y < 1 else 0, features)
-    weights = {k: v / numIters for k, v in weights.iteritems()}
+            #Loss_squared_gradient = 2 (w * phi(x) - y) * phi(x)
+            # ==> 2 (prediction - y) * phi(x)
+
+            # w = w - eta * gradient
+            # w = w - (2 * eta * (prediction - y)) * phi(x)
+            util.increment(weights, y * eta if util.dotProduct(weights, features) * y < 1 else 0 , features)
+
     return weights
 
 
@@ -42,121 +41,77 @@ def generateWeights(trainExamples, numIters, eta):
 # ---------------------------------------------------------------------------
 # From a (featureVector, set of all reactions) dict, transform the dict
 # to one like (featureVector, result) where result is either an absolute number
-# of reactions (num_likes, num_angry, etc.), or a proportion of that reaction
-# - (numAngry / (total_reactions + total_num_likes) ) - or a proportion of
+# of reactions (num_likess, num_angrys, etc.), or a proportion of that reaction
+# - (numAngry / (total_reactions + total_num_likess) ) - or a proportion of
 # emotional reactions for that post (i.e. of all likes and reactions, how many
 # were some emotional reaction such as a wow or a sad or an angry?)
 def getFeaturesToReaction(featuresToResultsAll, reactionType):
-    if not reactionType in ["like", "love", "wow", "sad", "haha", 'angry']:
+    if not reactionType in ["num_likes", "num_reactions"]:
         raise Exception(reactionType + ' not recognized')
-    return [(vec, results['num_' + reactionType]) \
-        for vec, results in featuresToResultsAll]
+    return [(vec, results[reactionType]) \
+        for vec, results, post_id in featuresToResultsAll]
 
-def getFeaturesToProportionReaction(featuresToResultsAll, reactionType):
-    if not reactionType in ["like", "love", "wow", "sad", "haha", 'angry']:
-        raise Exception(reactionType + ' not recognized')
-
-    return [(vec, results['num_' + reactionType] * 1.0/ \
-        (results['total_reactions'] + results['num_like'])) \
-        for vec, results in featuresToResultsAll]
-
-def getFeaturesToProportionEmotional(featuresToResultsAll):
-    return [(vec, results['total_reactions'] * 1.0/ \
-        (results['total_reactions'] + results['num_like'])) \
-        for vec, results in featuresToResultsAll]
-
-# Functions: get[Proportions/Absolutes]Weights:
+# Functions: getAbsolutesWeights:
 # ---------------------------------------------------------------------------
 # returns a dict where the keys are a reaction ('like', 'love', etc.), and
 # the values are weight vectors that were trained on examples whose ultimate goal
 # was to predict the total number (or proportion relative to all reactions) of that reaction
-def getProportionsWeights(featuresToResultsAll):
-    proportionLikeExamples = getFeaturesToProportionReaction(featuresToResultsAll, 'like')
-    proportionLoveExamples = getFeaturesToProportionReaction(featuresToResultsAll, 'love')
-    proportionHahaExamples = getFeaturesToProportionReaction(featuresToResultsAll, 'haha')
-    proportionWowExamples = getFeaturesToProportionReaction(featuresToResultsAll, 'wow')
-    proportionSadExamples = getFeaturesToProportionReaction(featuresToResultsAll, 'sad')
-    proportionAngryExamples = getFeaturesToProportionReaction(featuresToResultsAll, 'angry')
-    proportionEmotionalExamples = getFeaturesToProportionEmotional(featuresToResultsAll)
-
-    weightsLike = generateWeights(proportionLikeExamples, 5000, 1)
-    weightsLove = generateWeights(proportionLoveExamples, 5000, 1)
-    weightsHaha = generateWeights(proportionHahaExamples, 5000, 1)
-    weightsWow = generateWeights(proportionWowExamples, 5000, 1)
-    weightsSad = generateWeights(proportionSadExamples, 5000, 1)
-    weightsAngry = generateWeights(proportionAngryExamples, 5000, 1)
-    weightsEmotional = generateWeights(proportionEmotionalExamples, 5000, 1)
-
-    return {'like': weightsLike, 'love': weightsLove, 'haha': weightsHaha, \
-    'wow': weightsWow, 'sad': weightsSad, 'angry': weightsAngry, 'emotional': weightsEmotional}
 
 def getAbsolutesWeights(featuresToResultsAll):
-    absoluteLikesExamples = getFeaturesToReaction(featuresToResultsAll, 'like')
-    absoluteLovesExamples = getFeaturesToReaction(featuresToResultsAll, 'love')
-    print absoluteLovesExamples
-    absoluteHahasExamples = getFeaturesToReaction(featuresToResultsAll, 'haha')
-    absoluteWowsExamples = getFeaturesToReaction(featuresToResultsAll, 'wow')
-    absoluteSadsExamples = getFeaturesToReaction(featuresToResultsAll, 'sad')
-    absoluteAngrysExamples = getFeaturesToReaction(featuresToResultsAll, 'angry')
-    weightsLike = generateWeights(absoluteLikesExamples, 1000, 1)
-    weightsLove = generateWeights(absoluteLovesExamples, 1000, 1)
-    weightsHaha = generateWeights(absoluteHahasExamples, 1000, 1)
-    weightsWow = generateWeights(absoluteWowsExamples, 1000, 1)
-    weightsSad = generateWeights(absoluteSadsExamples, 1000, 1)
-    weightsAngry = generateWeights(absoluteAngrysExamples, 1000, 1)
-    return {'like': weightsLike, 'love': weightsLove, 'haha': weightsHaha, \
-    'wow': weightsWow, 'sad': weightsSad, 'angry': weightsAngry}
+
+    likeExamples = getFeaturesToReaction(featuresToResultsAll, 'num_likes')
+    allExamples = getFeaturesToReaction(featuresToResultsAll, 'num_reactions')
+    numIters = 5000
+    eta = 0.008
+
+    print "Getting 'Like' weight vector... This could take a while..."
+    weightsLike = generateWeights(likeExamples, numIters, eta)
+
+    print "Getting general weight vector... This could take a while..."
+    weights = generateWeights(allExamples, numIters, eta)
+    #weightsLike = weights
+
+    print "likes vector:"
+    for k, v in weightsLike.iteritems():
+        print "\t%s: %s" % (k, v)
+
+    print "reactions vector:"
+    for k, v in weights.iteritems():
+        print "\t%s: %s" % (k, v)
+
+    return {'like': weightsLike, 'general': weights}
 
 
 
-def predict(weights, post, proportional):
+def predict(weights, fv, featureExtractor):
 
-    fv = featureExtractor.extractFeatures(post)
+    #fv = featureExtractor.extractFeatures(post)
+
+    #for k, v in weights['like'].iteritems():
+        #print "%s: %s" % (k, v)
 
     Likes = util.dotProduct(fv, weights['like'])
-    Loves = util.dotProduct(fv, weights['love'])
-    Hahas = util.dotProduct(fv, weights['haha'])
-    Wows = util.dotProduct(fv, weights['wow'])
-    Sads = util.dotProduct(fv, weights['sad'])
-    Angrys = util.dotProduct(fv, weights['angry'])
-    Emotionals = None
+    Reactions = util.dotProduct(fv, weights['general'])
 
-    if proportional:
-        Emotionals = util.dotProduct(fv, weights['emotional'])
+    results = {'like': Likes, 'general': Reactions}
 
-    results = {'like': Likes, 'love': Loves, 'haha': Hahas, \
-        'wow': Wows, 'sad': Sads, 'angry': Angrys}
-
-    if proportional:
-        results['emotional'] = Emotionals
     return results
 
 
 def printResults(guess, post):
 
-    if 'num_like' in post:
-        nLikes = post['num_like']
-        print "\tGuessed %s likes, real total was %s"  % (guess['like'], nLikes)
+    numReactions = 0
+    if 'num_likes' in post:
+        numLikes = post['num_likes']
+        numReactions += numLikes
+        print "\tGuessed %s likes, real total was %s"  % (guess['like'], numLikes)
 
-    if "num_love" in post:
-        nLoves = post['num_love']
-        print "\tGuessed %s loves, real total was %s" % (guess['love'], nLoves)
+    for num_key in ['num_loves', 'num_wows', 'num_hahas', 'num_sads', 'num_angrys']:
+        if num_key in post:
+            numReactions += post[num_key]
 
-    if "num_wow" in post:
-        nWows = post['num_wow']
-        print "\tGuessed %s wows, real total was %s" % (guess['wow'], nWows)
+    print "\tGuessed %s reactions, real total was %s" % (guess['general'], numReactions)
 
-    if "num_haha" in post:
-        nHahas = post['num_haha']
-        print "\tGuessed %s hahas, real total was %s" % (guess['haha'], nHahas)
-
-    if "num_sad" in post:
-        nSads = post['num_sad']
-        print "\tGuessed %s sads, real total was %s" % (guess['sad'], nSads)
-
-    if "num_angry" in post:
-        nAngrys = post['num_angry']
-        print "\tGuessed %s angrys, real total was %s" % (guess['angry'], nAngrys)
 
 def getAverageAbsoluteError(dp, numTrials):
     features = dp.getFeatureResultPairs()
@@ -165,7 +120,7 @@ def getAverageAbsoluteError(dp, numTrials):
     guess_sum = {}
     for i in range(numTrials):
         weights = getAbsolutesWeights(features)
-        iter_guess = predict(weights, testPost, False)        
+        iter_guess = predict(weights, testPost, dp.featureExtractor)
         if i == 0:
             guess_sum = iter_guess
         else:
@@ -175,32 +130,28 @@ def getAverageAbsoluteError(dp, numTrials):
     return guess_sum
 
 def main():
-    print "parsing data..."
-    dp = DataParser('posts')
+    print "parsing data... this could take a while..."
+    dp = DataParser('posts_news')
     featuresToResultsAll =  dp.getFeatureResultPairs()
 
+
     # calculate weights
-    # print "calculating weights for proportional queries..."
-    # proportionsWeights = getProportionsWeights(featuresToResultsAll)
-    print "calculating weights for absolute queries..."
+    print "calculating weight vectors..."
     absolutesWeights = getAbsolutesWeights(featuresToResultsAll)
-    # absoluteGuess = getAverageAbsoluteError(dp, 5)
-    # absoluteGuessTwo = getAverageAbsoluteError(dp, 10)
+
     # get example post to test
-    # print "testing on test profile and test post"
     testProfile = dp.parseProfile('tests/testProfile/profile.txt', False)
-    testPost = dp.parsePost('tests/testProfile/10376464573_10156028999814574.txt', testProfile, False)
 
-    # calculate results
-    #proportionGuess = predict(proportionsWeights, testPost, True)
+    for i in range(15):
 
-    absoluteGuess = predict(absolutesWeights, testPost, False)
-    # print results
-    #printResults(proportionGuess, testPost)
-    # print "Five iterations of learning give us the following guess:"
-    printResults(absoluteGuess, testPost)
-    # print "Ten iterations of learning give us the following guess:"
-    # printResults(absoluteGuessTwo, testPost)
+        testPost, results, test_id = random.choice(featuresToResultsAll)
+        # calculate results
+
+        guess = predict(absolutesWeights, testPost, dp.featureExtractor)
+        print "testPost %s:" % test_id
+
+        printResults(guess, results)
+        print "\n"
 
 if __name__ == '__main__':
    main()

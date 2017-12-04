@@ -1,0 +1,7 @@
+{
+  "fan_count": 29235221,
+  "category": "Media/News Company",
+  "about": "Instant breaking news alerts and the most talked about stories.",
+  "name": "CNN",
+  "id": "5550296508"
+}

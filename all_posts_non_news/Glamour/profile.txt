@@ -1,0 +1,7 @@
+{
+  "fan_count": 5746602,
+  "category": "Magazine",
+  "about": "Redefining fulfillment for women.",
+  "name": "Glamour",
+  "id": "26815555478"
+}

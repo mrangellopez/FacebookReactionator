@@ -1,0 +1,7 @@
+{
+  "id": "124149619252",
+  "name": "Chipotle Mexican Grill",
+  "fan_count": 3320220,
+  "category": "Food & Beverage Company",
+  "about": "Welcome to the official Chipotle Mexican Grill page."
+}

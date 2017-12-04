@@ -1,0 +1,7 @@
+{
+  "id": "10461186460",
+  "name": "Ben & Jerry's",
+  "fan_count": 8648116,
+  "category": "Product/Service",
+  "about": "Ben & Jerry’s believes business has a responsibility to give back to the community.  We make the best possible ice cream in the nicest way possible."
+}

@@ -1,9 +1,12 @@
-import json
-import math
+import json, math, os, time, copy, re
 import collections
-import os
+import csv
+import dateutil.parser as dp
+from PorterStemmer import PorterStemmer
 from FeatureExtractor import FeatureExtractor
 
+
+SECONDS_IN_DAY = 86400.0
 
 # Class: DataParser
 # --------------------
@@ -12,6 +15,8 @@ from FeatureExtractor import FeatureExtractor
 class DataParser:
 
     def __init__(self, path):
+
+        self.postCount = 0
 
         # maps a POST_ID to its feature_vector
         # e.g. feature_vectors['POST_ID'] gives a feature vector for a post
@@ -27,16 +32,30 @@ class DataParser:
 
         # map between account IDs and their names
         # map between account IDs and their profile objects (JSON)
-        # map between account IDs and their Post objects (JSON)
         self.Names = collections.defaultdict(lambda: '')
         self.Profiles = collections.defaultdict(lambda: '')
-        self.Posts = collections.defaultdict(lambda: [])
+
+        # map between post IDs and their Post objects
+        self.Posts = {}
+
+        self.stemmer = PorterStemmer()
+
+        self.wordsToLikes = collections.defaultdict(lambda: collections.defaultdict(lambda: collections.defaultdict(lambda: 0)))
+        self.wordsToReactions = collections.defaultdict(lambda: collections.defaultdict(lambda: collections.defaultdict(lambda: 0)))
+
+        # 2D array between word stems and emotions, where the value is the number of
+        # times a stem and reaction are associated
+        # When parsing a training post, we go through all the stems in the post.
+        # Every time we encounter stem in the post, we add num_reaction to
+        # stemReactions[stem][reaction] counter
+        self.stemReactions = collections.defaultdict(lambda: collections.defaultdict(lambda: \
+            {'num_likes': 0, 'num_loves': 0, 'num_wows': 0, 'num_sads': 0, 'num_hahas': 0, 'num_angrys': 0}))
 
 
         # internal fields, shouldn't need to be called by other classes
-        self.relevant_fields = ["id", "created_time", "type", \
-            "status_type","object_id", "name", "message" ]
-        self.possible_reactions = ["love", "wow", "sad", "haha", 'angry']
+        self.relevant_fields = ["id", "created_time", "type", "message" ]
+        self.possible_reactions = ["like", "love", "wow", "sad", "haha", 'angry']
+        self.num_reaction_keys = ['num_likes', 'num_loves', 'num_wows', 'num_sads', 'num_hahas', 'num_angrys']
 
         self.followerPopularityCategories = {
             10000:'upToTenThousand', 100000:'upToHundredThousand', \
@@ -63,6 +82,20 @@ class DataParser:
 
         self.accountsByPopularity[popularity].add(ID)
         return popularity
+
+
+    def recordWords(self, words, num_likes, num_reactions):
+        for i in range(0, len(words) - 2):
+            a = self.stemmer.stem(words[i])
+            b = self.stemmer.stem(words[i+1])
+            c = self.stemmer.stem(words[i+2])
+
+            self.wordsToLikes[a][b][c] += 0.001 * num_likes
+            self.wordsToReactions[a][b][c] += 0.001 * num_reactions
+        #for word in words:
+        #    word = self.stemmer.stem(word)
+        #    self.wordsToLikes[word] += 0.001 * num_likes
+        #    self.wordsToReactions[word] += 0.001 * num_reactions
 
     def recordFeatures(self, post):
         featureVector = self.featureExtractor.extractFeatures(post)
@@ -92,44 +125,92 @@ class DataParser:
 
         return profile
 
-    # Function: parsePost
-    # ----------------------------------
-    # reads a profile-id_post-id.txt file and parses the contents,
-    # then organizes the posts contents for internal use
-    def parsePost(self, path, profile, saveData):
+
+    def parsePostsCSV(self, path, profile, saveData):
         try:
-            with open(path) as data_file:
-                post = json.load(data_file)
+            with open(path, 'rb') as csvFile:
+                reader = csv.DictReader(csvFile)
+                lastPost = None
+                for post in reader:
+                    if post['status_type'] == 'photo' or post['status_type'] == 'video':continue
+
+                    for num_reaction in self.num_reaction_keys:
+                        post[num_reaction] = int(post[num_reaction])
+
+                    post['num_comments'] = int(post['num_comments'])
+
+                    post['message'] = post['status_message'] + '|' + post['link_name']
+                    del post['status_message']
+
+                    words = post['message'].split()
+                    if len(words) < 3:
+                        continue
+
+                    post['id'] = post['status_id']
+                    del post['status_id']
+
+                    post['created_time'] = post['status_published']
+                    del post['status_published']
+
+                    post['type'] = post['status_type']
+                    del post['status_type']
+
+                    created = int(dp.parse(post['created_time']).strftime('%s'))
+
+                    if lastPost != None:
+                        lastPostCreated = int(dp.parse(lastPost['created_time']).strftime('%s'))
+                        lastPost['days_since_last_post'] = (lastPostCreated - created) / SECONDS_IN_DAY
+
+                    post['elapsed_days'] = (time.time() - created) / SECONDS_IN_DAY
+
+                    results = {}
+                    num_reactions = 0
+
+                    for reaction in self.possible_reactions:
+                        k = "num_" + reaction + 's'
+                        v = 0
+
+                        if k in post:
+                            v = post[k]
+
+                        results[k] = v
+                        num_reactions += int(v)
+
+
+                    self.recordWords(post['message'].split(), post['num_likes'], num_reactions)
+
+                    results['num_reactions'] = num_reactions# - post['num_likes']
+
+                    results['num_likes'] = post['num_likes']
+
+                    self.post_results[post['id']] = results
+
+                    strongestEmotionKey = None
+                    maxEmotionCount = 0
+
+
+                    for num_emotion_key in self.num_reaction_keys:
+                        count = post[num_emotion_key]
+
+                        if count > maxEmotionCount:
+                            strongestEmotionKey = num_emotion_key
+                            maxEmotionCount = count
+
+                    if profile != None:
+                        post['poster'] = profile['id']
+                        post['fan_count'] = profile['fan_count']
+
+                    self.post_results[post['id']] = results
+
+                    self.Posts[post['id']] = post
+                    self.postCount += 1
+
+                    if self.postCount % 20000 == 0:
+                        print "parsed %s posts so far..." % self.postCount
+                    lastPost = post
         except Exception:
             err = 'error opening %s' % path
             raise Exception(err)
-
-        results = {}
-
-        newPost = {field: post[field] for field in self.relevant_fields if field in post}
-
-        newPost["num_like"] = post["likes"]["summary"]["total_count"]
-        results['num_like'] = newPost["num_like"]
-
-        total_reactions = 0
-        for reaction in self.possible_reactions:
-            k = "num_" + reaction
-            v = 0
-            if "reactions_" + reaction in post:
-                v = post["reactions_" + reaction]["summary"]["total_count"]
-            newPost[k] = v
-            results[k] = v
-            total_reactions += v
-
-        results['total_reactions'] = total_reactions
-        if profile != None:
-            newPost['poster'] = profile['id']
-            newPost['fan_count'] = profile['fan_count']
-
-        if saveData:
-            self.Posts[profile['id']].append(newPost)
-            self.post_results[newPost['id']] = results
-        return newPost
 
     # Function: parsePost
     # ----------------------------------
@@ -138,11 +219,27 @@ class DataParser:
         #traverse through all subdirectories
         for (name, children, files) in os.walk(path):
             if '/' not in name: continue
+            if not os.path.isfile(name + '/profile.txt'): continue
             profile = self.parseProfile(name + '/profile.txt', True)
             for File in files:
                 if File != 'profile.txt' and File[0] != '.':
-                    post = self.parsePost(name + '/' + File, profile, True)
-                    self.recordFeatures(post)
+                    self.parsePostsCSV(name + '/' + File, profile, True)
+
+                    #post = self.parsePost(name + '/' + File, profile, True)
+                    #self.recordFeatures(post)
+
+        print "Parsed %s posts total" % self.postCount
+
+        self.featureExtractor.giveWordsToLikes(self.wordsToLikes)
+        self.featureExtractor.giveWordsToReactions(self.wordsToReactions)
+        print "Processing posts... this may take a while..."
+        processed = 0
+        for postID, post in self.Posts.iteritems():
+            self.recordFeatures(post)
+            processed += 1
+            if processed % 20000 == 0:
+                print "Processed %s posts so far..." % processed
+        print "Processed %s posts total" % processed
 
     ########################## END PARSING FUNCTIONS ##########################
 
@@ -165,7 +262,7 @@ class DataParser:
     def getFeatureResultPairs(self):
         featureResults = []
         for post_id, vector in self.feature_vectors.iteritems():
-            featureResults.append((vector, self.post_results[post_id]))
+            featureResults.append((vector, self.post_results[post_id], post_id))
         return featureResults
 
 

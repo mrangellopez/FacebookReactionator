@@ -1,0 +1,7 @@
+{
+  "fan_count": 2071787,
+  "category": "Media/News Company",
+  "about": "The destination for in-depth analysis of daily headlines, insightful political commentary and informed perspectives. http://www.msnbc.com",
+  "name": "MSNBC",
+  "id": "273864989376427"
+}

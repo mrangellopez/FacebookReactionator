@@ -1,0 +1,7 @@
+{
+  "fan_count": 16046302,
+  "category": "Media/News Company",
+  "about": "Welcome to the official Fox News facebook page.  Get breaking news, must see videos and exclusive interviews from the #1 name in news.",
+  "name": "Fox News",
+  "id": "15704546335"
+}

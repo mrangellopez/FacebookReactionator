@@ -1,0 +1,7 @@
+{
+  "fan_count": 3914702,
+  "category": "Media/News Company",
+  "about": "Welcome to Reuters news on Facebook. We share news from around the world. Thanks for joining our community - we encourage comments! ",
+  "name": "Reuters",
+  "id": "114050161948682"
+}

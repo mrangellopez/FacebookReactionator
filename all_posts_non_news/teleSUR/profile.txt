@@ -1,0 +1,7 @@
+{
+  "fan_count": 1514438,
+  "category": "TV Channel",
+  "about": "Somos la señal informativa de América Latina.",
+  "name": "teleSUR",
+  "id": "186321186178"
+}
