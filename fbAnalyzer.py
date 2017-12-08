@@ -3,20 +3,43 @@ from DataParser import DataParser
 import random, util, copy, math
 from FeatureExtractor import FeatureExtractor
 import matplotlib.pyplot as plt
+import numpy as np
 
 featureExtractor = FeatureExtractor()
 
 
-
+keys = ['fan_count_log',\
+    'questions', 'exclamation',\
+    'pos', 'neg', 'neu', \
+    #'compound',\
+    #'original_message_len_sqrt',\
+    'unigrams_score', \
+    'bigrams_score', \
+    'trigrams_score', \
+    'reading_ease_log', \
+    'smog_index_inverse', \
+    #'neg_and_reading_ease',\
+    'neu_and_smog_inverse',\
+    #'not_neg_and_smog_inverse',\
+    #'not_pos_and_reading_ease',\
+    #'num_unique_stems_log_inverse', \
+    'elapsed_hours_log',\
+    # 'hours_since_last_post', 'early_morning',\
+    'morning','midday', \
+    #'afternoon',\
+    'evening', 'night', 'late_night_or_early_early_morning']
 # Function: generateWeights
 # -------------------------
 # generates weights given a set of (feature vectors, result) pairs
-def generateWeights(trainExamples, numIters, eta):
-    weights = {}
+def generateWeightsAndTestData(trainExamples, numIters, eta):
+    weights = [0 for i in range(len(trainExamples[0][0]))]
+    weights = np.array(weights)
     randomIndexes = [i for i in range(len(trainExamples))]
 
     random.shuffle(randomIndexes)
-    randomIndexes = randomIndexes[:int(0.1 * len(randomIndexes))]
+    dividerIndex = int(0.9 * len(randomIndexes))
+    randomIndexes = randomIndexes[:dividerIndex]
+    testData = trainExamples[dividerIndex:]
 
     #eta_original = eta
     #num_updates = 1
@@ -31,10 +54,10 @@ def generateWeights(trainExamples, numIters, eta):
             # ==> 2 (prediction - y) * phi(x)
 
             # w = w - eta * gradient
-            # w = w - (2 * eta * (prediction - y)) * phi(x)
-            util.increment(weights, y * eta if util.dotProduct(weights, features) * y < 1 else 0 , features)
+            f = (eta * 2 * (np.dot(weights, features) - y)) * features
+            weights = np.subtract(weights, f)
 
-    return weights
+    return (weights, testData)
 
 
 # Functions: getFeaturesTo[Reaction, ProportionReaction, ProportionEmotional]
@@ -46,88 +69,41 @@ def generateWeights(trainExamples, numIters, eta):
 # emotional reactions for that post (i.e. of all likes and reactions, how many
 # were some emotional reaction such as a wow or a sad or an angry?)
 def getFeaturesToReaction(featuresToResultsAll, reactionType):
-    if not reactionType in ["num_likes", "num_reactions"]:
+    if not reactionType in ["num_reactions"]:
         raise Exception(reactionType + ' not recognized')
     return [(vec, results[reactionType]) \
         for vec, results, post_id in featuresToResultsAll]
 
-# Functions: getAbsolutesWeights:
+# Functions: getWeightsAndTestData:
 # ---------------------------------------------------------------------------
 # returns a dict where the keys are a reaction ('like', 'love', etc.), and
 # the values are weight vectors that were trained on examples whose ultimate goal
 # was to predict the total number (or proportion relative to all reactions) of that reaction
 
-def getAbsolutesWeights(featuresToResultsAll):
-
-    likeExamples = getFeaturesToReaction(featuresToResultsAll, 'num_likes')
+def getWeightsAndTestData(featuresToResultsAll):
     allExamples = getFeaturesToReaction(featuresToResultsAll, 'num_reactions')
-    numIters = 5000
-    eta = 0.008
+    numIters = 10000
+    eta = 0.00008
 
-    print "Getting 'Like' weight vector... This could take a while..."
-    weightsLike = generateWeights(likeExamples, numIters, eta)
+    print "Getting weight vector... This could take a while..."
+    weights, testData = generateWeightsAndTestData(allExamples, numIters, eta * 0.1)
 
-    print "Getting general weight vector... This could take a while..."
-    weights = generateWeights(allExamples, numIters, eta)
-    #weightsLike = weights
+    #print "Printing weights:"
+    #for i in range(len(weights)):
+    #    print '\t%s: %s' % (keys[i], weights[i])
 
-    print "likes vector:"
-    for k, v in weightsLike.iteritems():
-        print "\t%s: %s" % (k, v)
-
-    print "reactions vector:"
-    for k, v in weights.iteritems():
-        print "\t%s: %s" % (k, v)
-
-    return {'like': weightsLike, 'general': weights}
+    return (weights, testData)
 
 
 
-def predict(weights, fv, featureExtractor):
-
-    #fv = featureExtractor.extractFeatures(post)
-
-    #for k, v in weights['like'].iteritems():
-        #print "%s: %s" % (k, v)
-
-    Likes = util.dotProduct(fv, weights['like'])
-    Reactions = util.dotProduct(fv, weights['general'])
-
-    results = {'like': Likes, 'general': Reactions}
-
-    return results
+def predict(weights, fv):
+    guess = int(np.dot(fv, weights))
+    return guess if guess > 0 else 0
 
 
-def printResults(guess, post):
+def printResults(prediction, target):
+    print "\tPrediction: %s, target: %s" % (prediction, target)
 
-    numReactions = 0
-    if 'num_likes' in post:
-        numLikes = post['num_likes']
-        numReactions += numLikes
-        print "\tGuessed %s likes, real total was %s"  % (guess['like'], numLikes)
-
-    for num_key in ['num_loves', 'num_wows', 'num_hahas', 'num_sads', 'num_angrys']:
-        if num_key in post:
-            numReactions += post[num_key]
-
-    print "\tGuessed %s reactions, real total was %s" % (guess['general'], numReactions)
-
-
-def getAverageAbsoluteError(dp, numTrials):
-    features = dp.getFeatureResultPairs()
-    testProfile = dp.parseProfile('tests/testProfile/profile.txt', False)
-    testPost = dp.parsePost('tests/testProfile/10376464573_10156028999814574.txt', testProfile, False)
-    guess_sum = {}
-    for i in range(numTrials):
-        weights = getAbsolutesWeights(features)
-        iter_guess = predict(weights, testPost, dp.featureExtractor)
-        if i == 0:
-            guess_sum = iter_guess
-        else:
-            guess_sum = {k: v + iter_guess[k] for k,v in guess_sum.iteritems()}
-        print guess_sum
-    guess_sum = {k: v/numTrials for k,v in guess_sum.iteritems()}
-    return guess_sum
 
 def main():
     print "parsing data... this could take a while..."
@@ -136,22 +112,30 @@ def main():
 
 
     # calculate weights
-    print "calculating weight vectors..."
-    absolutesWeights = getAbsolutesWeights(featuresToResultsAll)
+    weights, testData = getWeightsAndTestData(featuresToResultsAll)
 
-    # get example post to test
-    testProfile = dp.parseProfile('tests/testProfile/profile.txt', False)
+    i = 0
 
-    for i in range(15):
+    totalError = 0.0
+    print "\nPrinting Example Results:"
+    for fv, target in testData:
+        i += 1
+        prediction = predict(weights, fv)
 
-        testPost, results, test_id = random.choice(featuresToResultsAll)
-        # calculate results
+        if i % 20 == 0:
+            printResults(prediction, target)
 
-        guess = predict(absolutesWeights, testPost, dp.featureExtractor)
-        print "testPost %s:" % test_id
 
-        printResults(guess, results)
-        print "\n"
+        #error = abs(len(str(prediction)) - len(str(target)))
+        error = abs(prediction - target)
+        totalError += error
+
+    totalError /= i
+    print "total Error as average difference between prediction and target: %s" % totalError
+
+    dp.printMostProvocativeWords(50)
+    dp.printMostProvocativeBigrams(50)
+    dp.printMostProvocativeTrigrams(50)
 
 if __name__ == '__main__':
    main()

@@ -3,98 +3,171 @@ from PorterStemmer import PorterStemmer
 import json, math, collections, re
 #from textblob.en.sentiments import NaiveBayesAnalyzer
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from textstat.textstat import textstat
+from nltk.corpus import stopwords
+import numpy as np
+import pandas as pd
 
 class FeatureExtractor:
     def __init__(self):
         self.stemmer = PorterStemmer()
         self.analyzer = SentimentIntensityAnalyzer()
-        self.num_reaction_keys = ['num_likes', 'num_loves', 'num_wows', 'num_sads', 'num_hahas', 'num_angrys']
+        self.stopwords = set(stopwords.words('english'))
+        self.featuresList = None
 
-    def giveWordsToReactions(self, wordsToReactions):
-        self.wordsToReactions = wordsToReactions
+    def giveTrigramScores(self, trigramScores):
+        self.trigramScores = trigramScores
 
-    def giveWordsToLikes(self, wordsToLikes):
-        self.wordsToLikes = wordsToLikes
+    def giveBigramScores(self, bigramScores):
+        self.bigramScores = bigramScores
 
-    def getMessageScore(self, words):
-        score_likes = 0.0
-        score_reactions = 0.0
-        for i in range(0, len(words) - 2):
-            a = self.stemmer.stem(words[i])
-            b = self.stemmer.stem(words[i+1])
-            c = self.stemmer.stem(words[i+2])
-            score_likes += self.wordsToLikes[a][b][c]
-            score_reactions += self.wordsToReactions[a][b][c]
-        #for word in words:
-        #    word = self.stemmer.stem(word)
-        #    score_likes += self.wordsToLikes[word]
-        #    score_reactions += self.wordsToReactions[word]
-        if len(words) > 2:
-            score_likes /= (len(words) - 2)
-            score_reactions /= (len(words) - 2)
-        else:
-            scores_likes = 0
-            scores_reactions = 0
-        return (score_likes, score_reactions)
+    def giveWordScores(self, wordScores):
+        self.wordScores = wordScores
+
+    def getScoreByUnigrams(self, words):
+        score = 0.0
+        seen = set([])
+        for word in words:
+            if word in self.stopwords:
+                continue
+
+            word = self.stemmer.stem(word)
+            if word in seen:
+                continue
+            seen.add(word)
+            score += self.wordScores[word]
+        if len(seen) == 0 or score == 0.0:
+            return 0.0
+        return score * 0.001 / len(seen)
+
+    def getScoreByBigrams(self, words):
+        score = 0.0
+        seen = set([])
+        i = 0
+        while i < len(words) - 1:
+            a = words[i]
+            b = words[i+1]
+            if a in self.stopwords:
+                i += 1
+                continue
+
+            a = self.stemmer.stem(a)
+            b = self.stemmer.stem(b)
+
+            if (a, b) in seen:
+                i += 1
+                continue
+
+            seen.add((a, b))
+            score += self.bigramScores[a][b]
+
+        if len(seen) == 0 or score == 0.0:
+            return 0.0
+        return score * 0.0001 / len(seen)
+
+    def getScoreByTrigrams(self, words):
+        score = 0.0
+        seen = set([])
+        i = 0
+        while i < len(words) - 2:
+            a = words[i]
+            b = words[i+1]
+            c = words[i+2]
+            if a in self.stopwords:
+                i += 1
+                continue
+
+            a = self.stemmer.stem(a)
+            b = self.stemmer.stem(b)
+            c = self.stemmer.stem(c)
+
+            if (a, b, c) in seen:
+                i += 1
+                continue
+
+            seen.add((a, b, c))
+            score += self.trigramScores[a][b][c]
+
+        if len(seen) == 0 or score == 0.0:
+            return 0.0
+        return score * 0.0001 / len(seen)
 
 
     def extractFeatures(self, post):
         v = {}
 
         v['fan_count_log'] = math.log(post['fan_count'])
-        #v['fan_count_squared'] = post['fan_count'] ** 2
 
-        if 'days_since_last_post' in post:
-            v['days_since_last_post'] = post['days_since_last_post']
+        message = post['message'].decode('utf-8').encode('ascii', 'ignore').strip().lower()
 
+        v['questions'] = 1 if '?' in post['message'] else 0
+        v['exclamation'] = 1 if '!' in post['message'] else 0
 
-        if 'message' in post and len(post['message']) > 0:
-            message = post['message'].strip().lower()
+        #sentiment analysis
+        scores = self.analyzer.polarity_scores(message)
+        allSentimentScores = scores['pos'] + scores['neg'] + scores['neu']
+        scores['pos'] = scores['pos'] / allSentimentScores
+        scores['neg'] = scores['neg'] / allSentimentScores
+        scores['neu'] = scores['neu'] / allSentimentScores
 
-            #sentiment analysis
-            scores = self.analyzer.polarity_scores(message)
-            v['p_pos'] = scores['pos']
-            v['p_neg'] = scores['neg']
-            v['p_neu'] = scores['neu']
-            v['p_compound'] = scores['compound']
+        v['pos'] = scores['pos']
+        v['neg'] = scores['neg']
+        v['neu'] = scores['neu']
+        #v['compound'] = scores['compound']
 
-            # text length by word count
-            v['num_words_log'] = math.log(len(message.split()))
+        # text length by word count
 
-            unique_stems = collections.defaultdict(lambda: 0)
+        words = message.split()
 
-            words = message.split()
+        v['unigrams_score'] = self.getScoreByUnigrams(words)
+        v['bigrams_score'] = self.getScoreByBigrams(words)
+        v['trigrams_score'] = self.getScoreByTrigrams(words)
 
-            message_score_likes, message_score_reactions = self.getMessageScore(words)
+        readease = textstat.flesch_reading_ease(message)
+        smog = textstat.smog_index(message)
+        flesh_kin = textstat.flesch_kincaid_grade(message)
 
-            v['message_score_likes'] = message_score_likes
-            v['message_score_reactions'] = message_score_reactions
+        v['reading_ease'] = math.log(readease) if readease > 1 else 0
+        v['smog_index_inverse'] = 1 / math.log(smog) if smog > 0 else 1
+        #v['grade_inverse'] = 1 / math.log(flesh_kin) if flesh_kin > 1 else 1
 
-            v ['fan_count_log_times_message_score_likes'] = message_score_likes * v['fan_count_log']
-            v ['fan_count_log_times_message_score_reactions'] = message_score_reactions * v['fan_count_log']
+        v['neg_and_smog_inverse'] = scores['neg'] * v['smog_index_inverse']
+        v['neg_and_reading_ease'] = scores['neg']  * v['reading_ease']
+        #v['neg_and_grade_inverse'] = scores['neg'] * v['grade_inverse']
 
-            for word in words:
-                unique_stems[self.stemmer.stem(word)] += 1
+        v['pos_and_smog_inverse'] = scores['pos'] * v['smog_index_inverse']
+        v['pos_and_reading_ease'] = scores['pos']  * v['reading_ease']
+        #v['pos_and_grade_inverse'] = scores['pos'] * v['grade_inverse']
 
-            total = 0.0
+        v['neu_and_smog_inverse'] = scores['neu'] * v['smog_index_inverse']
+        v['neu_and_reading_ease'] = scores['neu']  * v['reading_ease']
+        #v['neu_and_grade_inverse'] = scores['neu'] * v['grade_inverse']
 
-            # text length by number of unique word stems
-            if len(unique_stems) > 0:
-                v['num_unique_stems_log'] = math.log(len(unique_stems))
-            #v['num_unique_stems_squared'] = len(unique_stems) ** 2
+        unique_stems = collections.defaultdict(lambda: 0)
 
-        v['elapsed_days_log'] = math.log(post['elapsed_days'])
+        for word in words:
+            unique_stems[self.stemmer.stem(word)] += 1
 
-        if post['type'] == 'photo':
-            v['is_photo'] = 1
-        elif post['type'] == 'video':
-            v['is_video'] = 1
-        elif post['type'] == 'link':
-            v['is_link'] = 1
-        elif post['type'] == 'status':
-            v['is_status'] = 1
+        #v['num_unique_stems_log_inverse'] = 1 / math.log(len(unique_stems)) if len(unique_stems) > 1 else 1
 
-        #if 'num_comments' in post:
-            #v['num_comments'] = post['num_comments']
+        v['elapsed_hours_log'] = math.log10(post['elapsed_hours']) if post['elapsed_hours'] > 1 else post['elapsed_hours']
 
-        return v
+        #if 'hours_since_last_post' in post:
+        #    v['hours_since_last_post_log'] = math.log(post['hours_since_last_post']) if post['hours_since_last_post'] > 1 else 0
+        #else:
+        #    v['hours_since_last_post_log'] = 0.0
+
+        hr = post['hour_created']
+
+        v['early_morning'] = 1 if hr >= 4 and hr < 8 else 0
+        v['morning'] = 1 if hr >= 8 and hr < 11 else 0
+        v['midday'] = 1 if hr >= 11 and hr < 13 else 0
+        v['afternoon'] = 1 if hr >= 13 and hr < 16 else 0
+        v['evening'] = 1 if hr >=16 and hr < 20 else 0
+        v['night'] = 1 if hr >=20 else 0
+        v['late_night_or_early_early_morning'] = 1 if hr < 4 else 0
+
+        if self.featuresList == None:
+            self.featuresList = [k for k, val in v.iteritems()]
+
+        return pd.Series(v).values
